@@ -66,8 +66,8 @@ public:
             typedef double(MRF::*pEnergy)(LatticeConstIterator, LatticeIterator, int);
 
             for (size_t k = 0; k < mDepth; k++) {
-                LatticeIterator cit = curPhases.begin();// +mWidth + 1;
-                LatticeConstIterator it = cur.cbegin();// +mWidth + 1;
+                LatticeIterator cit = curPhases.begin();
+                LatticeConstIterator it = cur.cbegin();
                 pEnergy pE = &MRF::Energy3D;
                 if (mDepth == 1)
                     pE = &MRF::Energy;
