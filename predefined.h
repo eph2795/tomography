@@ -1,0 +1,126 @@
+#ifndef PREDEFINED_H
+#define PREDEFINED_H
+
+#include <opencv/cv.hpp>
+#include <opencv/cv.h>
+
+typedef unsigned char uchar;
+typedef unsigned int uint;
+typedef unsigned long ulong;
+
+enum MRFMethods { MRF_SA, MRF_GIBBS, MRF_IM };
+enum STACK_COLORMAP { BINARY, GRAYSCALE, SPECTRAL };
+
+const double EPS_THINY = 1e-4;
+const double INF = 1e+9;
+const size_t COMPONENTS_NUMBER = 100;
+
+const std::vector<cv::Scalar> COLORS =
+    {
+        cv::Scalar(0, 0, 0),
+        cv::Scalar(255,248,240),
+        cv::Scalar(215,235,250),
+        cv::Scalar(255,255,0),
+        cv::Scalar(212,255,127),
+        cv::Scalar(255,255,240),
+        cv::Scalar(220,245,245),
+        cv::Scalar(196,228,255),
+        cv::Scalar(205,235,255),
+        cv::Scalar(255,0,0),
+        cv::Scalar(226,43,138),
+        cv::Scalar(42,42,165),
+        cv::Scalar(135,184,222),
+        cv::Scalar(160,158,95),
+        cv::Scalar(0,255,127),
+        cv::Scalar(30,105,210),
+        cv::Scalar(80,127,255),
+        cv::Scalar(237,149,100),
+        cv::Scalar(220,248,255),
+        cv::Scalar(60,20,220),
+        cv::Scalar(255,255,0),
+        cv::Scalar(139,0,0),
+        cv::Scalar(139,139,0),
+        cv::Scalar(11,134,184),
+        cv::Scalar(169,169,169),
+        cv::Scalar(0,100,0),
+        cv::Scalar(169,169,169),
+        cv::Scalar(107,183,189),
+        cv::Scalar(139,0,139),
+        cv::Scalar(47,107,85),
+        cv::Scalar(0,140,255),
+        cv::Scalar(204,50,153),
+        cv::Scalar(0,0,139),
+        cv::Scalar(122,150,233),
+        cv::Scalar(143,188,143),
+        cv::Scalar(139,61,72),
+        cv::Scalar(79,79,47),
+        cv::Scalar(79,79,47),
+        cv::Scalar(209,206,0),
+        cv::Scalar(211,0,148),
+        cv::Scalar(147,20,255),
+        cv::Scalar(255,191,0),
+        cv::Scalar(105,105,105),
+        cv::Scalar(105,105,105),
+        cv::Scalar(255,144,30),
+        cv::Scalar(34,34,178),
+        cv::Scalar(240,250,255),
+        cv::Scalar(34,139,34),
+        cv::Scalar(255,0,255),
+        cv::Scalar(220,220,220),
+        cv::Scalar(255,248,248),
+        cv::Scalar(0,215,255),
+        cv::Scalar(32,165,218),
+        cv::Scalar(128,128,128),
+        cv::Scalar(0,128,0),
+        cv::Scalar(47,255,173),
+        cv::Scalar(128,128,128),
+        cv::Scalar(240,255,240),
+        cv::Scalar(180,105,255),
+        cv::Scalar(92,92,205),
+        cv::Scalar(130,0,75),
+        cv::Scalar(240,255,255),
+        cv::Scalar(140,230,240),
+        cv::Scalar(140,230,240),
+        cv::Scalar(250,230,230),
+        cv::Scalar(245,240,255),
+        cv::Scalar(0,252,124),
+        cv::Scalar(205,250,255),
+        cv::Scalar(230,216,173),
+        cv::Scalar(128,128,240),
+        cv::Scalar(255,255,224),
+        cv::Scalar(210,250,250),
+        cv::Scalar(211,211,211),
+        cv::Scalar(144,238,144),
+        cv::Scalar(211,211,211),
+        cv::Scalar(193,182,255),
+        cv::Scalar(122,160,255),
+        cv::Scalar(170,178,32),
+        cv::Scalar(250,206,135),
+        cv::Scalar(153,136,119),
+        cv::Scalar(153,136,119),
+        cv::Scalar(222,196,176),
+        cv::Scalar(224,255,255),
+        cv::Scalar(0,255,0),
+        cv::Scalar(50,205,50),
+        cv::Scalar(230,240,250),
+        cv::Scalar(255,0,255),
+        cv::Scalar(0,0,128),
+        cv::Scalar(170,205,102),
+        cv::Scalar(205,0,0),
+        cv::Scalar(211,85,186),
+        cv::Scalar(219,112,147),
+        cv::Scalar(113,179,60),
+        cv::Scalar(113,179,60),
+        cv::Scalar(113,179,60),
+        cv::Scalar(113,179,60),
+        cv::Scalar(238,104,123),
+        cv::Scalar(154,250,0),
+        cv::Scalar(204,209,72),
+        cv::Scalar(133,21,199),
+        cv::Scalar(112,25,25),
+        cv::Scalar(250,255,245),
+        cv::Scalar(225,228,255)
+    };
+
+
+#endif
