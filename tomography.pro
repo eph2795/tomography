@@ -52,7 +52,8 @@ SOURCES += \
         mainwindow.cpp \
         qcustomplot.cpp \
         voxel.cpp \
-    ReadWriteModule.cpp
+        ReadWriteModule.cpp \
+
 
 HEADERS += \
         mainwindow.h \
@@ -62,8 +63,7 @@ HEADERS += \
         voxel.h \
         predefined.h \
         qcustomplot.h \
-        ReadWriteModule.h
-
+        ReadWriteModule.h \
 
 FORMS += \
         mainwindow.ui \

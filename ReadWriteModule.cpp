@@ -18,6 +18,13 @@
 #include "threshold.h"
 #include "MRF.h"
 
+bool match_pattern(const std::string &s, const std::string &p) {
+    if ((s.size() >= p.size())
+        && (s.substr(s.size() - p.size(), p.size()) == p)) {
+        return true;
+    }
+    return false;
+}
 
 uchar ToBinary255(uchar a)
 {
@@ -26,15 +33,15 @@ uchar ToBinary255(uchar a)
 
 
 int ReadImageStackFromBinary(const std::string &FileName, size_t W, size_t H, size_t D,
-                              stxxl::vector<uchar> &Voxel, bool DoTransform) {
-    std::basic_ifstream<uchar> I(FileName.c_str(), std::ios::binary);
+                             stxxl::vector<uchar> &Voxel, bool DoTransform) {
+    std::ifstream I(FileName.c_str(), std::ifstream::binary);
     if (I.bad()) {
         std::cout << "Opening failed: " << FileName << std::endl;
         return -1;
     }
 
     size_t N = W * H;
-    uchar *buff = new uchar[N];
+    char *buff = new char[N];
     Voxel.resize(W * H * D);
 
     size_t pos = 0;
@@ -59,9 +66,45 @@ int ReadImageStackFromBinary(const std::string &FileName, size_t W, size_t H, si
 	return pos;
 }
 
+int WriteImageStackToBinary(const std::string &FileName,
+                            size_t W,
+                            size_t H,
+                            size_t D,
+                            const stxxl::vector<uchar> &Voxel,
+                            bool DoTransform) {
+    std::cout << " WRITING " << FileName
+              << ", size: " << Voxel.size()
+              << ", " << W << " " << H << " " << D << std::endl;
+
+    std::ofstream O(FileName.c_str(), std::ofstream::binary);
+    if (O.bad()) {
+        std::cout << "Opening failed: " << FileName << std::endl;
+        return -1;
+    }
+
+    size_t N = W * H;
+    char *buff = new char[N];
+
+    size_t pos = 0;
+    for (size_t i = 0; i < D; i++) {
+        O.seekp(pos, std::ios::beg);
+        if (DoTransform) {
+            std::transform(Voxel.begin() + pos, Voxel.begin() + pos + N, buff, ToBinary255);
+        } else {
+            std::copy(Voxel.begin() + pos, Voxel.begin() + pos + N, buff);
+        }
+        O.write(buff, N);
+        pos += N;
+    }
+
+    O.close();
+    delete []buff;
+
+    return pos;
+}
 
 bool isImage(const std::string &fname) {
-    return (fname.size() > 4) && (fname.substr(fname.size() - 3, 3) == "bmp");
+    return match_pattern(fname, "bmp") && !match_pattern(fname, "_spr.bmp");
 }
 
 void getImageStackSizes(const std::vector<boost::filesystem::path> &directory_list,
@@ -152,7 +195,8 @@ int ReadImageStackFromDirectory(const std::string &PathToDir,
 
 
 int WriteBinaryToDirectory(const std::string &PathToDir, size_t W, size_t H, size_t D,
-                               const stxxl::vector<uchar> &grayscaleStack) {
+                           const stxxl::vector<uchar> &grayscaleStack) {
+
     if (grayscaleStack.size() != W * H * D) {
         std::cout << " wrong voxel sizes" << std::endl;
         return -1;
@@ -266,7 +310,11 @@ int WriteComponentsToDirectory(const std::string &PathToDir, size_t W, size_t H,
 }
 
 
-void WriteCharactiristicsToCsv(const std::string &pathToDir, Voxel &voxel,
+void WriteCharactiristicsToCsv(const std::string &pathToDir,
+                               const std::string &percXY,
+                               const std::string &percXZ,
+                               const std::string &percYZ,
+                               Voxel &voxel,
                                bool isAbsolute, bool isXY, bool isXZ, bool isYZ) {
     voxel.getTotalVolume();
 
@@ -308,7 +356,14 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir, Voxel &voxel,
               [&voxel](long long one, long long another)
               { return voxel.clusterSizesDistr[one] > voxel.clusterSizesDistr[another]; });
 
+    bool is_xy = false
+       , is_xz = false
+       , is_yz = false;
     for (long long  i : order) {
+        if (i == 0) {
+            continue;
+        }
+
         long long cur_volume = voxel.clusterSizesDistr[i];
         double cur_rel_volume = 1.0 * voxel.clusterSizesDistr[i] / voxel.W / voxel.H / voxel.D;
 
@@ -320,12 +375,20 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir, Voxel &voxel,
         if (isXY) {
             if (statisticsXY.find(i) != statisticsXY.end()) {
                 output << ", true," << statisticsXY[i];
+                if (!is_xy) {
+                    WriteImageStackToBinary(percXY, voxel.W, voxel.H, voxel.D, voxel.grayscaleStack, true);
+                    is_xy = true;
+                }
             } else {
                 output << ", false, -";
             }
         }
         if (isXZ) {
             if (statisticsXZ.find(i) != statisticsXZ.end()) {
+                if (!is_xz) {
+                    WriteImageStackToBinary(percXZ, voxel.W, voxel.H, voxel.D, voxel.grayscaleStack, true);
+                    is_xz = true;
+                }
                 output << ", true, " << statisticsXZ[i];
             } else {
                 output << ", false, -";
@@ -333,6 +396,10 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir, Voxel &voxel,
         }
         if (isYZ) {
             if (statisticsYZ.find(i) != statisticsYZ.end()) {
+                if (!is_yz) {
+                    WriteImageStackToBinary(percYZ, voxel.W, voxel.H, voxel.D, voxel.grayscaleStack, true);
+                    is_yz = true;
+                }
                 output << ", true, " << statisticsYZ[i];
             } else {
                 output << ", false, -";
@@ -351,6 +418,7 @@ void readConfig(const std::string &pathToConfig,
                 bool &doMRF,
                 uchar &solidValue,
                 bool &isAbsolute, bool &isXY, bool &isXZ, bool &isYZ,
+                bool &produceBinary,
                 bool &produceComponents) {
     std::ifstream config(pathToConfig, std::ios::in);
 
@@ -409,6 +477,10 @@ void readConfig(const std::string &pathToConfig,
         flags >> isAbsolute >> isXY >> isXZ >> isYZ;
 
         std::getline(config, line);
+        std::istringstream produce_binary(line);
+        produce_binary >> produceBinary;
+
+        std::getline(config, line);
         std::istringstream produce_components(line);
         produce_components >> produceComponents;
 
@@ -439,6 +511,7 @@ void readConfig(const std::string &pathToConfig,
         std::cout << "Print XZ percolation:  " << (bool)isXZ << std::endl;
         std::cout << "Print YZ percolation:  " << (bool)isYZ << std::endl;
 
+        std::cout << "Produce binarization: " << (bool)produceBinary << std::endl;
         std::cout << "Produce clusterization components: " << (bool)produceComponents << std::endl;
 
         config.close();
@@ -449,10 +522,131 @@ void readConfig(const std::string &pathToConfig,
 }
 
 
-void handleBatch(const std::string &PathToDir) {
-    boost::filesystem::path path_to_dir(PathToDir);
+void handleDir(const std::string &targetPath,
+               const std::string &pathToDir,
+               const MRFSettings &settings,
+               const Threshold &threshold,
+               bool is_binary_data,
+               bool do_mrf,
+               uchar solid_value,
+               bool is_absolute, bool is_xy, bool is_xz, bool is_yz,
+               bool produce_binary,
+               bool produce_components) {
+    std::cout << "Current folder: " << pathToDir << std::endl;
+
+    size_t W = 0, H = 0, D = 0;
+    stxxl::vector<uchar> grayscaleStack;
+    std::array<long long, 256> grayscaleHistogram;
+
+    int readen_bytes = ReadImageStackFromDirectory(pathToDir,
+                                                   is_binary_data,
+                                                   W, H, D,
+                                                   grayscaleStack,
+                                                   grayscaleHistogram);
+    std::cout << "Readen bytes: " << readen_bytes << std::endl;
+
+    Voxel voxel(W, H, D, solid_value);
+    voxel.grayscaleStack = grayscaleStack;
+    voxel.grayscaleHistogram = grayscaleHistogram;
+    grayscaleStack.resize(0);
+
+    MRF mrf(settings, voxel.W, voxel.H, voxel.D, threshold);
+
+    std::clock_t begin = clock();
+
+    if (!is_binary_data) {
+        mrf.StatsNL(voxel.grayscaleStack);
+        mrf.ConditionalImage(voxel.grayscaleStack, voxel.phasesStack);
+
+        if (do_mrf) {
+            std::cout << "Starting MRF..." << std::endl;
+            mrf.SimulatedAnnealing3D(voxel.grayscaleStack, voxel.phasesStack);
+        }
+    } else {
+       voxel.phasesStack = voxel.grayscaleStack;
+    }
+
+    std::string target_name;
+    boost::filesystem::path target_path;
+
+    if (produce_binary) {
+        target_name = pathToDir + "_threshold";
+        target_path = boost::filesystem::path(target_name);
+        if (!boost::filesystem::exists(target_path) ||
+            !boost::filesystem::is_directory(target_path)) {
+            boost::filesystem::create_directory(target_name);
+        }
+        for (auto it = boost::filesystem::directory_iterator(target_path);
+                  it != boost::filesystem::directory_iterator(); it ++) {
+            boost::filesystem::remove_all(it->path());
+        }
+        WriteBinaryToDirectory(target_name,
+                               voxel.W, voxel.H, voxel.D, voxel.phasesStack);
+    }
+
+    std::clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    begin = end;
+
+    std::cout << "Thresholding and binary writing: " << elapsed_secs << std::endl;
+
+    voxel.clusterize();
+
+    end = clock();
+    elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    begin = end;
+
+    std::cout << "Full clusterization: " << elapsed_secs << std::endl;
+
+    if (produce_components) {
+        target_name = pathToDir + "_result";
+        target_path = boost::filesystem::path(target_name);
+        if (!boost::filesystem::exists(target_path) ||
+            !boost::filesystem::is_directory(target_path)) {
+            boost::filesystem::create_directory(target_name);
+        }
+        for (auto it = boost::filesystem::directory_iterator(target_path);
+                  it != boost::filesystem::directory_iterator(); it ++) {
+            boost::filesystem::remove_all(it->path());
+        }
+
+        WriteComponentsToDirectory(target_name,
+                                   voxel.W, voxel.H, voxel.D, voxel.componentsStack,
+                                   voxel.clusterSizesDistr);
+    }
+
+    WriteCharactiristicsToCsv(pathToDir,
+                              targetPath + "percXY",
+                              targetPath + "percYZ",
+                              targetPath + "percYZ",
+                              voxel, is_absolute, is_xy, is_xz, is_yz);
+
+    end = clock();
+    elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+
+   std::cout << "Colored writing and percolation calc: "
+             << elapsed_secs << std::endl;
+   std::cout << "Leaving folder " << pathToDir << std::endl << std::endl;
+}
+
+bool isDataDirectory(const std::string &directory) {
+    bool result = false;
+    if (((directory.size() < std::string("result").size()) || !match_pattern(directory, "result"))
+        && ((directory.size() < std::string("threshold").size()) || !match_pattern(directory, "threshold"))
+        && ((directory.size() < std::string("percXY").size()) || !match_pattern(directory, "percXY"))
+        && ((directory.size() < std::string("percXZ").size()) || !match_pattern(directory, "percXZ"))
+        && ((directory.size() < std::string("percYZ").size()) || !match_pattern(directory, "percYZ"))) {
+        result = true;
+    }
+
+    return result;
+}
+
+void handleBatch(const std::string &targetPath,
+                 const std::string &pathToDir) {
+    boost::filesystem::path path_to_dir(pathToDir);
     uchar solid_value;
-    bool is_binary_data, do_mrf, is_absolute, is_xy, is_xz, is_yz, produce_components;
+    bool is_binary_data, do_mrf, is_absolute, is_xy, is_xz, is_yz, produce_binary, produce_components;
     try  {
         if (boost::filesystem::exists(path_to_dir) && boost::filesystem::is_directory(path_to_dir)) {
             Threshold threshold;
@@ -461,6 +655,7 @@ void handleBatch(const std::string &PathToDir) {
                        settings, threshold,
                        is_binary_data, do_mrf,
                        solid_value, is_absolute, is_xy, is_xz, is_yz,
+                       produce_binary,
                        produce_components);
 
             std::vector<boost::filesystem::path> directory_list;
@@ -469,13 +664,8 @@ void handleBatch(const std::string &PathToDir) {
             std::sort(directory_list.begin(), directory_list.end());
 
             for (const boost::filesystem::path &item : directory_list) {
-                bool isResult = true;
-                std::string name = item.c_str();
-                if ((name.size() < 6) || (name.substr(name.size() - 6, 6)) != "result") {
-                    isResult = false;
-                }
 
-                if (boost::filesystem::is_directory(item) && !isResult) {
+                if (boost::filesystem::is_directory(item) && isDataDirectory(item.c_str())) {
 
                     std::cout << "Current folder: " << item.c_str() << std::endl;
 
@@ -513,32 +703,26 @@ void handleBatch(const std::string &PathToDir) {
                     std::string target_name;
                     boost::filesystem::path target_path;
 
-//                    target_name = std::string(item.c_str()) + "_threshold";
-//                    target_path = boost::filesystem::path(target_name);
-//                    if (!boost::filesystem::exists(target_path) ||
-//                        !boost::filesystem::is_directory(target_path)) {
-//                        boost::filesystem::create_directory(target_name);
-//                    }
-//                    for (auto it = boost::filesystem::directory_iterator(target_path);
-//                              it != boost::filesystem::directory_iterator(); it ++) {
-//                        boost::filesystem::remove_all(it->path());
-//                    }
-
-//                    WriteBinaryToDirectory(target_name, voxel.W, voxel.H, voxel.D, voxel.phasesStack);
+                    if (produce_binary) {
+                        target_name = std::string(item.c_str()) + "_threshold";
+                        target_path = boost::filesystem::path(target_name);
+                        if (!boost::filesystem::exists(target_path) ||
+                            !boost::filesystem::is_directory(target_path)) {
+                            boost::filesystem::create_directory(target_name);
+                        }
+                        for (auto it = boost::filesystem::directory_iterator(target_path);
+                                  it != boost::filesystem::directory_iterator(); it ++) {
+                            boost::filesystem::remove_all(it->path());
+                        }
+                        WriteBinaryToDirectory(target_name,
+                                               voxel.W, voxel.H, voxel.D, voxel.phasesStack);
+                    }
 
                     std::clock_t end = clock();
                     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
                     begin = end;
 
                     std::cout << "Thresholding and binary writing: " << elapsed_secs << std::endl;
-
-                //    mrf.Perform(voxel.grayscaleStack, voxel.phasesStack, false, false);
-
-                //    end = clock();
-                //    elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-                //    begin = end;
-
-                //    std::cout << "MRF: " << elapsed_secs << std::endl;
 
                     voxel.clusterize();
 
@@ -564,7 +748,11 @@ void handleBatch(const std::string &PathToDir) {
                                                    voxel.W, voxel.H, voxel.D, voxel.componentsStack,
                                                    voxel.clusterSizesDistr);
                     }
-                    WriteCharactiristicsToCsv(item.c_str(), voxel, is_absolute, is_xy, is_xz, is_yz);
+                    WriteCharactiristicsToCsv(item.c_str(),
+                                              targetPath + "/percXY/" + item.filename().c_str(),
+                                              targetPath + "/percXZ/" + item.filename().c_str(),
+                                              targetPath + "/percYZ/" + item.filename().c_str(),
+                                              voxel, is_absolute, is_xy, is_xz, is_yz);
 
                     end = clock();
                     elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;

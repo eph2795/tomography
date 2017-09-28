@@ -16,6 +16,10 @@
 #include "threshold.h"
 #include "voxel.h"
 
+#include <boost/filesystem.hpp>
+#include "boost/filesystem/operations.hpp"
+#include "boost/filesystem/path.hpp"
+#include "boost/progress.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -27,7 +31,16 @@ int main(int argc, char *argv[])
 
     std::cout << "Config directory: " << dir << std::endl;
 
-    handleBatch(dir);
+    std::vector<std::string> perc = {"/percXY", "/percXZ", "/percYZ"};
+    for (const std::string &suff: perc) {
+        std::string name = dir + suff;
+        boost::filesystem::path path = boost::filesystem::path(name);
+        if (!boost::filesystem::exists(path) ||
+            !boost::filesystem::is_directory(path)) {
+            boost::filesystem::create_directory(name);
+        }
+    }
+    handleBatch(dir, dir);
 
 //    QApplication a(argc, argv);
 //    MainWindow w(voxel);
