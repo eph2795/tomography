@@ -532,8 +532,7 @@ void handleDir(const std::string &targetPath,
                bool is_absolute, bool is_xy, bool is_xz, bool is_yz,
                bool produce_binary,
                bool produce_components) {
-    std::cout << "Current folder: " << pathToDir << std::endl;
-
+    boost::filesystem::path path_to_dir(pathToDir);
     size_t W = 0, H = 0, D = 0;
     stxxl::vector<uchar> grayscaleStack;
     std::array<long long, 256> grayscaleHistogram;
@@ -543,6 +542,11 @@ void handleDir(const std::string &targetPath,
                                                    W, H, D,
                                                    grayscaleStack,
                                                    grayscaleHistogram);
+    if (D == 0) {
+        return;
+    }
+    std::cout << "Current folder: " << pathToDir << std::endl;
+
     std::cout << "Readen bytes: " << readen_bytes << std::endl;
 
     Voxel voxel(W, H, D, solid_value);
@@ -616,9 +620,9 @@ void handleDir(const std::string &targetPath,
     }
 
     WriteCharactiristicsToCsv(pathToDir,
-                              targetPath + "percXY",
-                              targetPath + "percYZ",
-                              targetPath + "percYZ",
+                              targetPath + "/percXY/" + path_to_dir.filename().c_str(),
+                              targetPath + "/percXZ/" + path_to_dir.filename().c_str(),
+                              targetPath + "/percYZ/" + path_to_dir.filename().c_str(),
                               voxel, is_absolute, is_xy, is_xz, is_yz);
 
     end = clock();
@@ -642,6 +646,25 @@ bool isDataDirectory(const std::string &directory) {
     return result;
 }
 
+
+void DFS(const std::string currentDir,
+         std::vector<std::string> &dirTree) {
+    boost::filesystem::path path_to_dir(currentDir);
+
+    std::vector<boost::filesystem::path> directory_list;
+    std::copy(boost::filesystem::directory_iterator(path_to_dir),
+              boost::filesystem::directory_iterator(), std::back_inserter(directory_list));
+    \
+    for (const boost::filesystem::path &item : directory_list) {
+        if (boost::filesystem::is_directory(item) && isDataDirectory(item.c_str())) {
+            dirTree.push_back(item.c_str());
+            std::cout << "     " << item.c_str() << std::endl;
+            DFS(item.c_str(), dirTree);
+        }
+    }
+}
+
+
 void handleBatch(const std::string &targetPath,
                  const std::string &pathToDir) {
     boost::filesystem::path path_to_dir(pathToDir);
@@ -663,105 +686,21 @@ void handleBatch(const std::string &targetPath,
                       boost::filesystem::directory_iterator(), std::back_inserter(directory_list));
             std::sort(directory_list.begin(), directory_list.end());
 
-            for (const boost::filesystem::path &item : directory_list) {
+            std::vector<std::string> dirTree(0);
 
-                if (boost::filesystem::is_directory(item) && isDataDirectory(item.c_str())) {
+            DFS(pathToDir, dirTree);
 
-                    std::cout << "Current folder: " << item.c_str() << std::endl;
-
-                    size_t W = 0, H = 0, D = 0;
-                    stxxl::vector<uchar> grayscaleStack;
-                    std::array<long long, 256> grayscaleHistogram;
-
-                    int readen_bytes = ReadImageStackFromDirectory(item.c_str(),
-                                                                   is_binary_data,
-                                                                   W, H, D,
-                                                                   grayscaleStack,
-                                                                   grayscaleHistogram);
-                    std::cout << "Readen bytes: " << readen_bytes << std::endl;
-
-                    Voxel voxel(W, H, D, solid_value);
-                    voxel.grayscaleStack = grayscaleStack;
-                    voxel.grayscaleHistogram = grayscaleHistogram;
-                    grayscaleStack.resize(0);
-
-                    MRF mrf(settings, voxel.W, voxel.H, voxel.D, threshold);
-
-                    std::clock_t begin = clock();
-
-                    if (!is_binary_data) {
-                        mrf.StatsNL(voxel.grayscaleStack);
-                        mrf.ConditionalImage(voxel.grayscaleStack, voxel.phasesStack);
-
-                        if (do_mrf) {
-                            std::cout << "Starting MRF..." << std::endl;
-                            mrf.SimulatedAnnealing3D(voxel.grayscaleStack, voxel.phasesStack);
-                        }
-                    } else {
-                        voxel.phasesStack = voxel.grayscaleStack;
-                    }
-                    std::string target_name;
-                    boost::filesystem::path target_path;
-
-                    if (produce_binary) {
-                        target_name = std::string(item.c_str()) + "_threshold";
-                        target_path = boost::filesystem::path(target_name);
-                        if (!boost::filesystem::exists(target_path) ||
-                            !boost::filesystem::is_directory(target_path)) {
-                            boost::filesystem::create_directory(target_name);
-                        }
-                        for (auto it = boost::filesystem::directory_iterator(target_path);
-                                  it != boost::filesystem::directory_iterator(); it ++) {
-                            boost::filesystem::remove_all(it->path());
-                        }
-                        WriteBinaryToDirectory(target_name,
-                                               voxel.W, voxel.H, voxel.D, voxel.phasesStack);
-                    }
-
-                    std::clock_t end = clock();
-                    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-                    begin = end;
-
-                    std::cout << "Thresholding and binary writing: " << elapsed_secs << std::endl;
-
-                    voxel.clusterize();
-
-                    end = clock();
-                    elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-                    begin = end;
-
-                    std::cout << "Full clusterization: " << elapsed_secs << std::endl;
-
-                    if (produce_components) {
-                        target_name = std::string(item.c_str()) + "_result";
-                        target_path = boost::filesystem::path(target_name);
-                        if (!boost::filesystem::exists(target_path) ||
-                            !boost::filesystem::is_directory(target_path)) {
-                            boost::filesystem::create_directory(target_name);
-                        }
-                        for (auto it = boost::filesystem::directory_iterator(target_path);
-                                  it != boost::filesystem::directory_iterator(); it ++) {
-                            boost::filesystem::remove_all(it->path());
-                        }
-
-                        WriteComponentsToDirectory(target_name,
-                                                   voxel.W, voxel.H, voxel.D, voxel.componentsStack,
-                                                   voxel.clusterSizesDistr);
-                    }
-                    WriteCharactiristicsToCsv(item.c_str(),
-                                              targetPath + "/percXY/" + item.filename().c_str(),
-                                              targetPath + "/percXZ/" + item.filename().c_str(),
-                                              targetPath + "/percYZ/" + item.filename().c_str(),
-                                              voxel, is_absolute, is_xy, is_xz, is_yz);
-
-                    end = clock();
-                    elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-
-                    std::cout << "Colored writing and percolation calc: "
-                              << elapsed_secs << std::endl;
-                    std::cout << "Leaving folder " << item.c_str() << std::endl << std::endl;
-                }
-
+            for (const std::string &item : dirTree) {
+                handleDir(targetPath,
+                          item,
+                          settings,
+                          threshold,
+                          is_binary_data,
+                          do_mrf,
+                          solid_value,
+                          is_absolute, is_xy, is_xz, is_yz,
+                          produce_binary,
+                          produce_components);
             }
         }
     } catch (const boost::filesystem::filesystem_error& ex) {

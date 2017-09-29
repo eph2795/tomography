@@ -31,13 +31,15 @@ long long Voxel::getShift(size_t w, size_t h, size_t d){
 
 void Voxel::getWSurface(size_t w, std::vector<long long> &surface) {
     surface.resize(HD);
+//    for (size_t d = 0; d < D; d++) {
+//        std::copy(componentsStack.begin() + getShift(w, 0, d),
+//                  componentsStack.begin() + getShift(w + 1, 0, d),
+//                  surface.begin() + d * H);
+//    }
     for (size_t d = 0; d < D; d++) {
-        std::copy(componentsStack.begin() + getShift(w, 0, d),
-                  componentsStack.begin() + getShift(w + 1, 0, d),
-                  surface.begin() + d * H);
-//        for (size_t h = 0; h < H; h++) {
-//            surface[d * H + h] = componentsStack[getShift(w, h, d)];
-//        }
+        for (size_t h = 0; h < H; h++) {
+            surface[d * H + h] = componentsStack[getShift(w, h, d)];
+        }
     }
 }
 
@@ -54,14 +56,14 @@ void Voxel::getHSurface(size_t h, std::vector<long long> &surface) {
 
 void Voxel::getDSurface(size_t d, std::vector<long long> &surface) {
     surface.resize(WH);
-    std::copy(componentsStack.begin() + getShift(0, 0, d),
-              componentsStack.begin() + getShift(0, 0, d + 1),
-              surface.begin());
-//    for (size_t h = 0; h < H; h++) {
-//        for (size_t w = 0; w < W; w++) {
-//            surface[h * W + w] = componentsStack[getShift(w, h, d)];
-//        }
-//    }
+//    std::copy(componentsStack.begin() + getShift(0, 0, d),
+//              componentsStack.begin() + getShift(0, 0, d + 1),
+//              surface.begin());
+    for (size_t h = 0; h < H; h++) {
+        for (size_t w = 0; w < W; w++) {
+            surface[h * W + w] = componentsStack[getShift(w, h, d)];
+        }
+    }
 }
 
 
@@ -247,7 +249,8 @@ void Voxel::calculatePercolation(const std::vector<long long> &oneLabels,
     long long clusters_num = 0;
 
     for (auto it = one_labels_set.cbegin(); it != one_labels_set.cend(); it++) {
-        if ((another_labels_set.find(*it) != another_labels_set.cend()) && (*it == solidValue)) {
+        if ((another_labels_set.find(*it) != another_labels_set.cend()) && (*it != 0)) {
+//            std::cout << " " << *it << " " << clusters_num << std::endl;
             clusters_num += 1;
             percolation_volume += clusterSizesDistr.at(*it);
             clustersStatistic[*it] = 0;
