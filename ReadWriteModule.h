@@ -43,8 +43,11 @@ void WriteCharactiristicsToCsv(const std::string &,
                                const std::string &,
                                const std::string &,
                                const std::string &,
+                               const std::string &,
+                               const std::string &,
                                Voxel &,
-                               bool=true, bool=true, bool=true, bool=true);
+                               bool, bool, bool, bool,
+                               double);
 
 void handleBatch(const std::string &,
                  const std::string &);

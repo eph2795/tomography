@@ -149,7 +149,7 @@ int ReadImageStackFromDirectory(const std::string &PathToDir,
             if ((W == 0) && (H == 0) && (D == 0)) {
                 getImageStackSizes(directory_list, W, H, D);
                 if ((W == 0) && (H == 0) && (D == 0)) {
-                    std::cout << "Cant read stack sizes" << std::endl;
+                    std::cout << "Cant read stack sizes: " << PathToDir << std::endl;
                     return -1;
                 }
                 std::cout << "Readen sizes: " << W << ", " << H << ", " << D << std::endl;
@@ -311,11 +311,14 @@ int WriteComponentsToDirectory(const std::string &PathToDir, size_t W, size_t H,
 
 
 void WriteCharactiristicsToCsv(const std::string &pathToDir,
+                               const std::string &pathToCSV,
+                               const std::string &suffix,
                                const std::string &percXY,
                                const std::string &percXZ,
                                const std::string &percYZ,
                                Voxel &voxel,
-                               bool isAbsolute, bool isXY, bool isXZ, bool isYZ) {
+                               bool isAbsolute, bool isXY, bool isXZ, bool isYZ,
+                               double volumeThreshold) {
     voxel.getTotalVolume();
 
     std::vector<long long> top, bot, left, right, back, front;
@@ -333,8 +336,13 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir,
     voxel.calculatePercolation(left, right, statisticsXZ);
     voxel.calculatePercolation(back, front, statisticsYZ);
 
-    std::ofstream output(pathToDir + "/statistics.csv");
-    output << std::fixed << std::setprecision(5);
+    std::ofstream output(pathToCSV + "/statistics_" + suffix + ".csv",
+                         std::ofstream::in | std::ofstream::binary | std::ofstream::app);
+    output << std::fixed << std::setprecision(6);
+
+    boost::filesystem::path path_to_dir(pathToDir);
+    output << path_to_dir.c_str() << ", \n";
+
     output << "ID, Relative volume";
     if (isAbsolute) {
         output << ", Absolute volume";
@@ -366,6 +374,9 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir,
 
         long long cur_volume = voxel.clusterSizesDistr[i];
         double cur_rel_volume = 1.0 * voxel.clusterSizesDistr[i] / voxel.W / voxel.H / voxel.D;
+        if (cur_rel_volume < volumeThreshold) {
+            break;
+        }
 
         output << i << ", " << cur_rel_volume;
         if (isAbsolute) {
@@ -620,10 +631,13 @@ void handleDir(const std::string &targetPath,
     }
 
     WriteCharactiristicsToCsv(pathToDir,
+                              targetPath,
+                              path_to_dir.filename().c_str(),
                               targetPath + "/percXY/" + path_to_dir.filename().c_str(),
                               targetPath + "/percXZ/" + path_to_dir.filename().c_str(),
                               targetPath + "/percYZ/" + path_to_dir.filename().c_str(),
-                              voxel, is_absolute, is_xy, is_xz, is_yz);
+                              voxel, is_absolute, is_xy, is_xz, is_yz,
+                              1e-6);
 
     end = clock();
     elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
@@ -647,19 +661,85 @@ bool isDataDirectory(const std::string &directory) {
 }
 
 
+bool produceTruncatedStack(const std::string &pathToDir,
+                           size_t biasW, size_t biasH, size_t biasD,
+                           size_t newW, size_t newH, size_t newD,
+                           std::string &newName) {
+    size_t W = 0, H = 0, D = 0;
+    stxxl::vector<uchar> grayscaleStack;
+
+    std::array<long long, 256> grayscaleHistogram;
+
+    int readen_bytes = ReadImageStackFromDirectory(pathToDir,
+                                                   false,
+                                                   W, H, D,
+                                                   grayscaleStack,
+                                                   grayscaleHistogram);
+    if ((D == 0) || (D < newD) || (W < newW) || (H < newH)) {
+        return false;
+    }
+
+    size_t N = W * H;
+    size_t newN = newW * newH;
+    stxxl::vector<uchar> newStack(newW * newH * newD);
+    for (size_t d = biasD; d < biasD + newD; d++) {
+        for (size_t h = biasH; h < biasH + newH; h++) {
+            size_t shift = d * N + h * W + biasW;
+            size_t shift_new = (d - biasD) * newN + (h - biasH) * newW;
+            std::copy(grayscaleStack.begin() + shift, grayscaleStack.begin() + shift + newW, newStack.begin() + shift_new);
+        }
+    }
+
+    boost::filesystem::path path_to_dir(pathToDir);
+    std::string filename = path_to_dir.filename().c_str();
+    boost::filesystem::path parent_path = path_to_dir.parent_path();
+    newName = (parent_path
+        / (filename
+           + "_W" + std::to_string(newW)
+           + "_H" + std::to_string(newH)
+           + "_D" + std::to_string(newD))
+    ).c_str();
+
+    if (!boost::filesystem::exists(newName) ||
+        !boost::filesystem::is_directory(newName)) {
+        boost::filesystem::create_directory(newName);
+    }
+    WriteGrayscaleToDirectory(newName, newW, newH, newD, newStack);
+
+    return true;
+}
+
+
 void DFS(const std::string currentDir,
-         std::vector<std::string> &dirTree) {
+         std::vector<std::string> &dirTree,
+         bool produceTruncated) {
     boost::filesystem::path path_to_dir(currentDir);
+
+    if (produceTruncated){
+        std::string new_name;
+        bool is_produced = produceTruncatedStack(currentDir,
+                                                 0, 0, 0,
+                                                 500, 500, 500,
+                                                 new_name);
+
+        std::cout << "Directory: " << currentDir
+                  << ", produced: " << is_produced << std::endl;
+
+        if (is_produced) {
+            dirTree.push_back(new_name);
+        }
+    }
 
     std::vector<boost::filesystem::path> directory_list;
     std::copy(boost::filesystem::directory_iterator(path_to_dir),
               boost::filesystem::directory_iterator(), std::back_inserter(directory_list));
-    \
+
     for (const boost::filesystem::path &item : directory_list) {
         if (boost::filesystem::is_directory(item) && isDataDirectory(item.c_str())) {
             dirTree.push_back(item.c_str());
             std::cout << "     " << item.c_str() << std::endl;
-            DFS(item.c_str(), dirTree);
+
+            DFS(item.c_str(), dirTree, produceTruncated);
         }
     }
 }
@@ -688,7 +768,7 @@ void handleBatch(const std::string &targetPath,
 
             std::vector<std::string> dirTree(0);
 
-            DFS(pathToDir, dirTree);
+            DFS(pathToDir, dirTree, true);
 
             for (const std::string &item : dirTree) {
                 handleDir(targetPath,
