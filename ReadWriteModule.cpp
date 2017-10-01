@@ -3,6 +3,8 @@
 #include <math.h>
 #include <array>
 #include <random>
+#include <sstream>
+#include <iomanip>
 
 #include "stxxl/vector"
 #include <boost/filesystem.hpp>
@@ -32,8 +34,10 @@ uchar ToBinary255(uchar a)
 }
 
 
-int ReadImageStackFromBinary(const std::string &FileName, size_t W, size_t H, size_t D,
-                             stxxl::vector<uchar> &Voxel, bool DoTransform) {
+int ReadImageStackFromBinary(const std::string &FileName,
+                             size_t W, size_t H, size_t D,
+                             stxxl::vector<uchar> &Voxel,
+                             bool DoTransform) {
     std::ifstream I(FileName.c_str(), std::ifstream::binary);
     if (I.bad()) {
         std::cout << "Opening failed: " << FileName << std::endl;
@@ -135,10 +139,12 @@ int ReadImageStackFromDirectory(const std::string &PathToDir,
     boost::filesystem::path path_to_dir(PathToDir);
     grayscaleHistogram.fill(0);
     try  {
-        if (boost::filesystem::exists(path_to_dir) && boost::filesystem::is_directory(path_to_dir)) {
+        if (boost::filesystem::exists(path_to_dir)
+            && boost::filesystem::is_directory(path_to_dir)) {
             std::vector<boost::filesystem::path> directory_list;
             std::copy(boost::filesystem::directory_iterator(path_to_dir),
-                      boost::filesystem::directory_iterator(), std::back_inserter(directory_list));
+                      boost::filesystem::directory_iterator(),
+                      std::back_inserter(directory_list));
             std::sort(directory_list.begin(), directory_list.end());
             if (((W != 0) || (H != 0) || (D != 0)) && (directory_list.size() != D)) {
                 std::cout << " folder contains wrong number of images: "
@@ -167,7 +173,8 @@ int ReadImageStackFromDirectory(const std::string &PathToDir,
 
                 if ((image.rows != H) || (image.cols != W) || (image.dims != 2)) {
                     std::cout << " folder contains image with wrong sizes: "
-                              << image.rows << ", " << image.cols << ", " << image.dims << std::endl;
+                              << image.rows << ", " << image.cols << ", " << image.dims
+                              << std::endl;
                     return -1;
                 } else {
                     if (isBinary) {
@@ -194,6 +201,15 @@ int ReadImageStackFromDirectory(const std::string &PathToDir,
 }
 
 
+std::string generateImgName(const std::string &prefix,
+                            size_t number,
+                            const std::string &extension) {
+    std::stringstream number_stream;
+    number_stream << std::setw(5) << std::setfill('0') << number;
+    std::string number_str = number_stream.str();
+    return prefix + number_str + extension;
+}
+
 int WriteBinaryToDirectory(const std::string &PathToDir, size_t W, size_t H, size_t D,
                            const stxxl::vector<uchar> &grayscaleStack) {
 
@@ -212,7 +228,7 @@ int WriteBinaryToDirectory(const std::string &PathToDir, size_t W, size_t H, siz
                        ToBinary255);
         cv::Mat image = cv::Mat(H, W, CV_8UC1, buf);
 
-        boost::filesystem::path current_path = path_to_dir / ("im" + std::to_string(i) + ".bmp");
+        boost::filesystem::path current_path = path_to_dir / generateImgName("im", i, ".bmp");
         cv::imwrite(current_path.c_str(), image);
         pos += N;
     }
@@ -233,13 +249,14 @@ int WriteGrayscaleToDirectory(const std::string &PathToDir, size_t W, size_t H, 
     uchar *buf = new uchar[N];
 
     auto max_label_it = std::max_element(grayscaleStack.begin(), grayscaleStack.end());
-    auto transform_function =[max_label_it](uchar c) { return uchar(1.0 * c / *max_label_it * 255); };
+    auto transform_function =
+        [max_label_it](uchar c) { return uchar(1.0 * c / *max_label_it * 255); };
     for (size_t i = 0; i < D; i++) {
         std::transform(grayscaleStack.begin() + pos, grayscaleStack.begin() + pos + N, buf,
                        transform_function);
         cv::Mat image = cv::Mat(H, W, CV_8UC1, buf);
 
-        boost::filesystem::path current_path = path_to_dir / ("im" + std::to_string(i) + ".bmp");
+        boost::filesystem::path current_path = path_to_dir / generateImgName("im", i, ".bmp");
         cv::imwrite(current_path.c_str(), image);
         pos += N;
     }
@@ -301,7 +318,7 @@ int WriteComponentsToDirectory(const std::string &PathToDir, size_t W, size_t H,
         }
         cv::Mat image = cv::Mat(H, W, CV_8UC3, buf);
 
-        boost::filesystem::path current_path = path_to_dir / ("im" + std::to_string(i) + ".bmp");
+        boost::filesystem::path current_path = path_to_dir / generateImgName("im", i, ".bmp");
         cv::imwrite(current_path.c_str(), image);
         pos += N;
     }
@@ -317,24 +334,24 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir,
                                const std::string &percXZ,
                                const std::string &percYZ,
                                Voxel &voxel,
-                               bool isAbsolute, bool isXY, bool isXZ, bool isYZ,
+                               bool isAbsolute,
+                               bool isXY, bool isXZ, bool isYZ,
                                double volumeThreshold) {
     voxel.getTotalVolume();
 
-    std::vector<long long> top, bot, left, right, back, front;
-    voxel.getDSurface(0, top);
-    voxel.getDSurface(voxel.D - 1, bot);
-    voxel.getHSurface(0, left);
-    voxel.getHSurface(voxel.H - 1, right);
-    voxel.getWSurface(0, back);
-    voxel.getWSurface(voxel.W - 1, front);
+//    voxel.getDSurface(0, top);
+//    voxel.getDSurface(voxel.D - 1, bot);
+//    voxel.getHSurface(0, left);
+//    voxel.getHSurface(voxel.H - 1, right);
+//    voxel.getWSurface(0, back);
+//    voxel.getWSurface(voxel.W - 1, front);
 
     std::cout << "Computing percolations... " << std::endl;
 
     std::map<long long, double> statisticsXY, statisticsXZ, statisticsYZ;
-    voxel.calculatePercolation(bot, top, statisticsXY);
-    voxel.calculatePercolation(left, right, statisticsXZ);
-    voxel.calculatePercolation(back, front, statisticsYZ);
+    voxel.calculatePercolation(voxel.bot, voxel.top, statisticsXY);
+    voxel.calculatePercolation(voxel.left, voxel.right, statisticsXZ);
+    voxel.calculatePercolation(voxel.back, voxel.front, statisticsYZ);
 
     std::ofstream output(pathToCSV + "/statistics_" + suffix + ".csv",
                          std::ofstream::in | std::ofstream::binary | std::ofstream::app);
@@ -386,8 +403,11 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir,
         if (isXY) {
             if (statisticsXY.find(i) != statisticsXY.end()) {
                 output << ", true," << statisticsXY[i];
-                if (!is_xy) {
-                    WriteImageStackToBinary(percXY, voxel.W, voxel.H, voxel.D, voxel.grayscaleStack, true);
+                if ((!is_xy) && match_pattern(pathToDir, "_W500_H500_D500")) {
+                    WriteImageStackToBinary(percXY,
+                                            voxel.W, voxel.H, voxel.D,
+                                            voxel.grayscaleStack,
+                                            true);
                     is_xy = true;
                 }
             } else {
@@ -396,8 +416,11 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir,
         }
         if (isXZ) {
             if (statisticsXZ.find(i) != statisticsXZ.end()) {
-                if (!is_xz) {
-                    WriteImageStackToBinary(percXZ, voxel.W, voxel.H, voxel.D, voxel.grayscaleStack, true);
+                if ((!is_xz) && match_pattern(pathToDir, "_W500_H500_D500")) {
+                    WriteImageStackToBinary(percXZ,
+                                            voxel.W, voxel.H, voxel.D,
+                                            voxel.grayscaleStack,
+                                            true);
                     is_xz = true;
                 }
                 output << ", true, " << statisticsXZ[i];
@@ -407,8 +430,11 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir,
         }
         if (isYZ) {
             if (statisticsYZ.find(i) != statisticsYZ.end()) {
-                if (!is_yz) {
-                    WriteImageStackToBinary(percYZ, voxel.W, voxel.H, voxel.D, voxel.grayscaleStack, true);
+                if ((!is_yz) && match_pattern(pathToDir, "_W500_H500_D500")) {
+                    WriteImageStackToBinary(percYZ,
+                                            voxel.W, voxel.H, voxel.D,
+                                            voxel.grayscaleStack,
+                                            true);
                     is_yz = true;
                 }
                 output << ", true, " << statisticsYZ[i];
@@ -513,7 +539,9 @@ void readConfig(const std::string &pathToConfig,
         std::cout << "Do MRF: " << doMRF << std::endl;
         if (doMRF) {
             std::cout << "MRF params: ";
-            std::cout << "mBeta: " << mBeta << ", mDeltaT: " << mDeltaT << ",  mT0: " << mT0 << std::endl;
+            std::cout << "mBeta: " << mBeta
+                      << ", mDeltaT: " << mDeltaT
+                      << ",  mT0: " << mT0 << std::endl;
         }
 
         std::cout << "Number of solid phase: " << (size_t)solidValue << std::endl;
@@ -523,7 +551,8 @@ void readConfig(const std::string &pathToConfig,
         std::cout << "Print YZ percolation:  " << (bool)isYZ << std::endl;
 
         std::cout << "Produce binarization: " << (bool)produceBinary << std::endl;
-        std::cout << "Produce clusterization components: " << (bool)produceComponents << std::endl;
+        std::cout << "Produce clusterization components: " << (bool)produceComponents
+                  << std::endl;
 
         config.close();
     } else {
@@ -589,6 +618,7 @@ void handleDir(const std::string &targetPath,
         target_path = boost::filesystem::path(target_name);
         if (!boost::filesystem::exists(target_path) ||
             !boost::filesystem::is_directory(target_path)) {
+
             boost::filesystem::create_directory(target_name);
         }
         for (auto it = boost::filesystem::directory_iterator(target_path);
@@ -632,7 +662,7 @@ void handleDir(const std::string &targetPath,
 
     WriteCharactiristicsToCsv(pathToDir,
                               targetPath,
-                              path_to_dir.filename().c_str(),
+                              path_to_dir.parent_path().filename().c_str(),
                               targetPath + "/percXY/" + path_to_dir.filename().c_str(),
                               targetPath + "/percXZ/" + path_to_dir.filename().c_str(),
                               targetPath + "/percYZ/" + path_to_dir.filename().c_str(),
@@ -642,18 +672,23 @@ void handleDir(const std::string &targetPath,
     end = clock();
     elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 
-   std::cout << "Colored writing and percolation calc: "
-             << elapsed_secs << std::endl;
-   std::cout << "Leaving folder " << pathToDir << std::endl << std::endl;
+    std::cout << "Colored writing and percolation calc: "
+              << elapsed_secs << std::endl;
+    std::cout << "Leaving folder " << pathToDir << std::endl << std::endl;
 }
 
 bool isDataDirectory(const std::string &directory) {
     bool result = false;
-    if (((directory.size() < std::string("result").size()) || !match_pattern(directory, "result"))
-        && ((directory.size() < std::string("threshold").size()) || !match_pattern(directory, "threshold"))
-        && ((directory.size() < std::string("percXY").size()) || !match_pattern(directory, "percXY"))
-        && ((directory.size() < std::string("percXZ").size()) || !match_pattern(directory, "percXZ"))
-        && ((directory.size() < std::string("percYZ").size()) || !match_pattern(directory, "percYZ"))) {
+    if (((directory.size() < std::string("result").size())
+         || !match_pattern(directory, "result"))
+        && ((directory.size() < std::string("threshold").size())
+            || !match_pattern(directory, "threshold"))
+        && ((directory.size() < std::string("percXY").size())
+            || !match_pattern(directory, "percXY"))
+        && ((directory.size() < std::string("percXZ").size())
+            || !match_pattern(directory, "percXZ"))
+        && ((directory.size() < std::string("percYZ").size())
+            || !match_pattern(directory, "percYZ"))) {
         result = true;
     }
 
@@ -686,7 +721,9 @@ bool produceTruncatedStack(const std::string &pathToDir,
         for (size_t h = biasH; h < biasH + newH; h++) {
             size_t shift = d * N + h * W + biasW;
             size_t shift_new = (d - biasD) * newN + (h - biasH) * newW;
-            std::copy(grayscaleStack.begin() + shift, grayscaleStack.begin() + shift + newW, newStack.begin() + shift_new);
+            std::copy(grayscaleStack.begin() + shift,
+                      grayscaleStack.begin() + shift + newW,
+                      newStack.begin() + shift_new);
         }
     }
 
@@ -700,10 +737,11 @@ bool produceTruncatedStack(const std::string &pathToDir,
            + "_D" + std::to_string(newD))
     ).c_str();
 
-    if (!boost::filesystem::exists(newName) ||
-        !boost::filesystem::is_directory(newName)) {
-        boost::filesystem::create_directory(newName);
+    if (boost::filesystem::exists(newName) && !boost::filesystem::is_directory(newName)) {
+        boost::filesystem::remove_all(newName);
     }
+    boost::filesystem::create_directory(newName);
+
     WriteGrayscaleToDirectory(newName, newW, newH, newD, newStack);
 
     return true;
@@ -715,7 +753,8 @@ void DFS(const std::string currentDir,
          bool produceTruncated) {
     boost::filesystem::path path_to_dir(currentDir);
 
-    if (produceTruncated){
+    if ((produceTruncated)
+        && !match_pattern(currentDir, "_W500_H500_D500")) {
         std::string new_name;
         bool is_produced = produceTruncatedStack(currentDir,
                                                  0, 0, 0,
@@ -749,9 +788,15 @@ void handleBatch(const std::string &targetPath,
                  const std::string &pathToDir) {
     boost::filesystem::path path_to_dir(pathToDir);
     uchar solid_value;
-    bool is_binary_data, do_mrf, is_absolute, is_xy, is_xz, is_yz, produce_binary, produce_components;
+    bool is_binary_data
+        , do_mrf
+        , is_absolute
+        , is_xy, is_xz, is_yz
+        , produce_binary, produce_components;
     try  {
-        if (boost::filesystem::exists(path_to_dir) && boost::filesystem::is_directory(path_to_dir)) {
+        if (boost::filesystem::exists(path_to_dir)
+            && boost::filesystem::is_directory(path_to_dir)) {
+
             Threshold threshold;
             MRFSettings settings;
             readConfig((path_to_dir / "config.txt").c_str(),
@@ -763,14 +808,21 @@ void handleBatch(const std::string &targetPath,
 
             std::vector<boost::filesystem::path> directory_list;
             std::copy(boost::filesystem::directory_iterator(path_to_dir),
-                      boost::filesystem::directory_iterator(), std::back_inserter(directory_list));
+                      boost::filesystem::directory_iterator(),
+                      std::back_inserter(directory_list));
             std::sort(directory_list.begin(), directory_list.end());
 
             std::vector<std::string> dirTree(0);
 
             DFS(pathToDir, dirTree, true);
 
+            std::cout << std::endl
+                      << "Total amount of dirs: " << dirTree.size()
+                      << std::endl;
+
+            size_t cur_num = 0;
             for (const std::string &item : dirTree) {
+                std::cout << "Begin processing of " << cur_num << " directory!" << std::endl;
                 handleDir(targetPath,
                           item,
                           settings,
@@ -781,6 +833,7 @@ void handleBatch(const std::string &targetPath,
                           is_absolute, is_xy, is_xz, is_yz,
                           produce_binary,
                           produce_components);
+                cur_num += 1;
             }
         }
     } catch (const boost::filesystem::filesystem_error& ex) {

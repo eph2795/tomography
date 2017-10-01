@@ -15,7 +15,10 @@
 
 Voxel::Voxel(size_t W_, size_t H_, size_t D_, uchar solidValue_)
     : W(W_), H(H_), D(D_), solidValue(solidValue_),
-      n_labels(1), total_volume(0), labels(1, 0), doSwap(0.5) {
+      n_labels(1), total_volume(0), labels(1, 0), doSwap(0.5),
+      top(W_* H_), bot(W_ * H_),
+      back(H_ * D_), front(H_ * D_),
+      left(W_ * D_), right(W_ * D_) {
     grayscaleHistogram.fill(0);
     clusterSizesDistr[0] = 0;
     WH = W_ * H_;
@@ -113,6 +116,7 @@ long long Voxel::clusterize() {
         std::copy(componentsStack.begin() + getShift(0, 0, d),
                   componentsStack.begin() + getShift(0, 0, d + 1),
                   current.begin());
+
         for (size_t h = 0; h < H; h++) {
             for (size_t w = 0; w < W; w++) {
                 long long root = uf_find(current[h * W + w]);
@@ -121,7 +125,27 @@ long long Voxel::clusterize() {
                     labels_mapping[root] = n_labels++;
                 }
                 current[h * W + w] = labels_mapping[root];
+
+                if (w == 0) {
+                    left[d * W + w] = current[h * W + w];
+                }
+                if (w == W - 1) {
+                    right[d * W + w] = current[h * W + w];
+                }
+
             }
+            std::copy(current.begin() + getShift(0, 0, 0),
+                      current.begin() + getShift(0, 1, 0),
+                      back.begin() + getShift(0, h, 0));
+            std::copy(current.begin() + getShift(0, H - 1, 0),
+                      current.begin() + getShift(0, H, 0),
+                      front.begin() + getShift(0, h, 0));
+        }
+        if (d == 0) {
+            top = current;
+        }
+        if (d == D - 1) {
+            bot = current;
         }
         std::copy(current.begin(), current.end(), componentsStack.begin() + getShift(0, 0, d));
     }

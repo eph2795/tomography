@@ -24,6 +24,8 @@ struct Voxel {
     stxxl::vector<uchar> phasesStack;
     stxxl::vector<long long> componentsStack;
 
+    std::vector<long long> top, bot, left, right, back, front;
+
     long long n_labels;
     long long total_volume;
     std::vector<long long > labels;                     //need to create stxxl containers in future

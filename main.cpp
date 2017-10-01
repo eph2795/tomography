@@ -23,10 +23,13 @@
 
 int main(int argc, char *argv[])
 {
+    std::clock_t begin = clock();
+
     if (argc < 2) {
         std::cout << "No config path!" << std::endl;
     }
 //    std::string dir("/home/efim/work/tomography_data/source");
+
     std::string dir(argv[1]);
 
     std::cout << "Config directory: " << dir << std::endl;
@@ -40,8 +43,12 @@ int main(int argc, char *argv[])
             boost::filesystem::create_directory(name);
         }
     }
+
     handleBatch(dir, dir);
 
+    std::clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    std::cout << "Total runtime: " << elapsed_secs << std::endl;
 //    QApplication a(argc, argv);
 //    MainWindow w(voxel);
 //    w.show();
