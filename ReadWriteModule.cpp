@@ -628,6 +628,7 @@ void handleDir(const std::string &targetPath,
 
             boost::filesystem::create_directory(target_name);
         }
+
         for (auto it = boost::filesystem::directory_iterator(target_path);
                   it != boost::filesystem::directory_iterator(); it ++) {
             boost::filesystem::remove_all(it->path());
@@ -744,14 +745,16 @@ bool produceTruncatedStack(const std::string &pathToDir,
            + "_D" + std::to_string(newD))
     ).c_str();
 
-    if (boost::filesystem::exists(newName) && !boost::filesystem::is_directory(newName)) {
-        boost::filesystem::path new_path(newName);
-        for (auto it = boost::filesystem::directory_iterator(new_path);
-                  it != boost::filesystem::directory_iterator(); it ++) {
-            boost::filesystem::remove_all(it->path());
-        }
+    boost::filesystem::path new_path(newName);
+    if (!boost::filesystem::exists(new_path)
+        || !boost::filesystem::is_directory(new_path)) {
+        boost::filesystem::create_directory(newName);
     }
-    boost::filesystem::create_directory(newName);
+
+    for (auto it = boost::filesystem::directory_iterator(new_path);
+              it != boost::filesystem::directory_iterator(); it ++) {
+        boost::filesystem::remove_all(it->path());
+    }
 
     WriteGrayscaleToDirectory(newName, newW, newH, newD, newStack);
 
