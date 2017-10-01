@@ -126,27 +126,27 @@ long long Voxel::clusterize() {
                 }
                 current[h * W + w] = labels_mapping[root];
 
-                if (w == 0) {
-                    left[d * W + w] = current[h * W + w];
-                }
-                if (w == W - 1) {
-                    right[d * W + w] = current[h * W + w];
-                }
+//                if (w == 0) {
+//                    left[d * W + w] = current[h * W + w];
+//                }
+//                if (w == W - 1) {
+//                    right[d * W + w] = current[h * W + w];
+//                }
 
             }
-            std::copy(current.begin() + getShift(0, 0, 0),
-                      current.begin() + getShift(0, 1, 0),
-                      back.begin() + getShift(0, h, 0));
-            std::copy(current.begin() + getShift(0, H - 1, 0),
-                      current.begin() + getShift(0, H, 0),
-                      front.begin() + getShift(0, h, 0));
+//            std::copy(current.begin() + getShift(0, 0, 0),
+//                      current.begin() + getShift(0, 1, 0),
+//                      back.begin() + getShift(0, h, 0));
+//            std::copy(current.begin() + getShift(0, H - 1, 0),
+//                      current.begin() + getShift(0, H, 0),
+//                      front.begin() + getShift(0, h, 0));
         }
-        if (d == 0) {
-            top = current;
-        }
-        if (d == D - 1) {
-            bot = current;
-        }
+//        if (d == 0) {
+//            top = current;
+//        }
+//        if (d == D - 1) {
+//            bot = current;
+//        }
         std::copy(current.begin(), current.end(), componentsStack.begin() + getShift(0, 0, d));
     }
 

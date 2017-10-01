@@ -338,20 +338,23 @@ void WriteCharactiristicsToCsv(const std::string &pathToDir,
                                bool isXY, bool isXZ, bool isYZ,
                                double volumeThreshold) {
     voxel.getTotalVolume();
-
-//    voxel.getDSurface(0, top);
-//    voxel.getDSurface(voxel.D - 1, bot);
-//    voxel.getHSurface(0, left);
-//    voxel.getHSurface(voxel.H - 1, right);
-//    voxel.getWSurface(0, back);
-//    voxel.getWSurface(voxel.W - 1, front);
+    std::vector<long long> top, bot, left, right, back, front;
+    voxel.getDSurface(0, top);
+    voxel.getDSurface(voxel.D - 1, bot);
+    voxel.getWSurface(0, left);
+    voxel.getWSurface(voxel.H - 1, right);
+    voxel.getHSurface(0, back);
+    voxel.getHSurface(voxel.W - 1, front);
 
     std::cout << "Computing percolations... " << std::endl;
 
     std::map<long long, double> statisticsXY, statisticsXZ, statisticsYZ;
-    voxel.calculatePercolation(voxel.bot, voxel.top, statisticsXY);
-    voxel.calculatePercolation(voxel.left, voxel.right, statisticsXZ);
-    voxel.calculatePercolation(voxel.back, voxel.front, statisticsYZ);
+    voxel.calculatePercolation(bot, top, statisticsXY);
+    voxel.calculatePercolation(back, front, statisticsXZ);
+    voxel.calculatePercolation(left, right, statisticsYZ);
+//    voxel.calculatePercolation(voxel.bot, voxel.top, statisticsXY);
+//    voxel.calculatePercolation(voxel.left, voxel.right, statisticsXZ);
+//    voxel.calculatePercolation(voxel.back, voxel.front, statisticsYZ);
 
     std::ofstream output(pathToCSV + "/statistics_" + suffix + ".csv",
                          std::ofstream::in | std::ofstream::binary | std::ofstream::app);
@@ -590,15 +593,18 @@ void handleDir(const std::string &targetPath,
     std::cout << "Readen bytes: " << readen_bytes << std::endl;
 
     Voxel voxel(W, H, D, solid_value);
-    voxel.grayscaleStack = grayscaleStack;
+    voxel.grayscaleStack.resize(W * H * D);
+    std::copy(grayscaleStack.begin(),
+              grayscaleStack.end(),
+              voxel.grayscaleStack.begin());
+
     voxel.grayscaleHistogram = grayscaleHistogram;
     grayscaleStack.resize(0);
-
-    MRF mrf(settings, voxel.W, voxel.H, voxel.D, threshold);
 
     std::clock_t begin = clock();
 
     if (!is_binary_data) {
+        MRF mrf(settings, voxel.W, voxel.H, voxel.D, threshold);
         mrf.StatsNL(voxel.grayscaleStack);
         mrf.ConditionalImage(voxel.grayscaleStack, voxel.phasesStack);
 
@@ -616,6 +622,7 @@ void handleDir(const std::string &targetPath,
     if (produce_binary) {
         target_name = pathToDir + "_threshold";
         target_path = boost::filesystem::path(target_name);
+//        boost::filesystem::remove_all(target_path);
         if (!boost::filesystem::exists(target_path) ||
             !boost::filesystem::is_directory(target_path)) {
 
@@ -738,7 +745,11 @@ bool produceTruncatedStack(const std::string &pathToDir,
     ).c_str();
 
     if (boost::filesystem::exists(newName) && !boost::filesystem::is_directory(newName)) {
-        boost::filesystem::remove_all(newName);
+        boost::filesystem::path new_path(newName);
+        for (auto it = boost::filesystem::directory_iterator(new_path);
+                  it != boost::filesystem::directory_iterator(); it ++) {
+            boost::filesystem::remove_all(it->path());
+        }
     }
     boost::filesystem::create_directory(newName);
 
@@ -774,11 +785,15 @@ void DFS(const std::string currentDir,
               boost::filesystem::directory_iterator(), std::back_inserter(directory_list));
 
     for (const boost::filesystem::path &item : directory_list) {
-        if (boost::filesystem::is_directory(item) && isDataDirectory(item.c_str())) {
+        if (boost::filesystem::is_directory(item)
+            && isDataDirectory(item.c_str())
+            && (!match_pattern(currentDir, "_W500_H500_D500") || !produceTruncated)) {
+
             dirTree.push_back(item.c_str());
             std::cout << "     " << item.c_str() << std::endl;
 
             DFS(item.c_str(), dirTree, produceTruncated);
+
         }
     }
 }
