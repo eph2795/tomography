@@ -34,14 +34,13 @@ long long Voxel::getShift(size_t w, size_t h, size_t d){
 
 void Voxel::getWSurface(size_t w, std::vector<long long> &surface) {
     surface.resize(HD);
-//    for (size_t d = 0; d < D; d++) {
-//        std::copy(componentsStack.begin() + getShift(w, 0, d),
-//                  componentsStack.begin() + getShift(w + 1, 0, d),
-//                  surface.begin() + d * H);
-//    }
+    std::vector<long long> surfaceD(WH);
     for (size_t d = 0; d < D; d++) {
+        std::copy(componentsStack.begin() + getShift(0, 0, d),
+                  componentsStack.begin() + getShift(0, 0, d + 1),
+                  surfaceD.begin());
         for (size_t h = 0; h < H; h++) {
-            surface[d * H + h] = componentsStack[getShift(w, h, d)];
+            surface[d * H + h] = surfaceD[h * W + w];
         }
     }
 }
@@ -50,23 +49,28 @@ void Voxel::getWSurface(size_t w, std::vector<long long> &surface) {
 void Voxel::getHSurface(size_t h, std::vector<long long> &surface) {
     surface.resize(WD);
     for (size_t d = 0; d < D; d++) {
-        for (size_t w = 0; w < W; w++) {
-            surface[d * W + w] = componentsStack[getShift(w, h, d)];
-        }
+        std::copy(componentsStack.begin() + getShift(0, h, d),
+                  componentsStack.begin() + getShift(0, h + 1, d),
+                  surface.begin() + d * W);
     }
+//    for (size_t d = 0; d < D; d++) {
+//        for (size_t w = 0; w < W; w++) {
+//            surface[d * W + w] = componentsStack[getShift(w, h, d)];
+//        }
+//    }
 }
 
 
 void Voxel::getDSurface(size_t d, std::vector<long long> &surface) {
     surface.resize(WH);
-//    std::copy(componentsStack.begin() + getShift(0, 0, d),
-//              componentsStack.begin() + getShift(0, 0, d + 1),
-//              surface.begin());
-    for (size_t h = 0; h < H; h++) {
-        for (size_t w = 0; w < W; w++) {
-            surface[h * W + w] = componentsStack[getShift(w, h, d)];
-        }
-    }
+    std::copy(componentsStack.begin() + getShift(0, 0, d),
+              componentsStack.begin() + getShift(0, 0, d + 1),
+              surface.begin());
+//    for (size_t h = 0; h < H; h++) {
+//        for (size_t w = 0; w < W; w++) {
+//            surface[h * W + w] = componentsStack[getShift(w, h, d)];
+//        }
+//    }
 }
 
 

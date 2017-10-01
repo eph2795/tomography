@@ -790,7 +790,7 @@ void DFS(const std::string currentDir,
     for (const boost::filesystem::path &item : directory_list) {
         if (boost::filesystem::is_directory(item)
             && isDataDirectory(item.c_str())
-            && (!match_pattern(currentDir, "_W500_H500_D500") || !produceTruncated)) {
+            && (!match_pattern(item.c_str(), "_W500_H500_D500") || !produceTruncated)) {
 
             dirTree.push_back(item.c_str());
             std::cout << "     " << item.c_str() << std::endl;
